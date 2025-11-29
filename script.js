@@ -374,6 +374,9 @@ document.addEventListener('keyup', (e) => {
 
 // ==================== GAME FUNCTIONS ====================
 function resetGame() {
+    // Remove all toasts immediately
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+
     score = 0;
     coins = 0;
     level = 1;
@@ -549,7 +552,7 @@ function updatePowerups() {
             if (activePowerups[key].timer <= 0) {
                 activePowerups[key].active = false;
                 const info = POWERUP_TYPES.find(p => p.type === key);
-                showToast(`${info.emoji} ${info.name} acabou`, '#888');
+                showToast(`${info.emoji} ${info.name} ACABOU!`, '#888');
             }
         }
     });
@@ -695,6 +698,10 @@ function hitObstacle() {
 
 function gameOver() {
     gameState = 'gameover';
+
+    // Remove all toasts immediately
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+
     gamesPlayed++;
 
     screenShake = 20;
@@ -1710,7 +1717,7 @@ function updatePreview() {
 
     // Ground
     pctx.fillStyle = '#228B22';
-    pctx.fillRect(0, 60, 80, 20);
+    pctx.fillRect(0, 70, 80, 10);
 
     const skinData = SKINS.find(s => s.name === player.skin);
     let bodyColor = CLOTHES[player.clothes].color;
@@ -1722,44 +1729,66 @@ function updatePreview() {
 
     // Body
     pctx.fillStyle = bodyColor;
-    pctx.fillRect(30, 25, 20, 20);
+    pctx.fillRect(30, 35, 20, 20);
 
     // Head
     pctx.fillStyle = '#FFDAB9';
     pctx.beginPath();
-    pctx.arc(40, 18, 10, 0, Math.PI * 2);
+    pctx.arc(40, 28, 10, 0, Math.PI * 2);
     pctx.fill();
 
     // Hair for woman
     if (player.model === 1) {
         pctx.fillStyle = '#8B4513';
-        pctx.fillRect(32, 10, 16, 4);
-        pctx.fillRect(28, 14, 4, 15);
-        pctx.fillRect(48, 14, 4, 15);
+        pctx.fillRect(32, 20, 16, 4);
+        pctx.fillRect(28, 24, 4, 15);
+        pctx.fillRect(48, 24, 4, 15);
     }
 
     // Legs
     pctx.fillStyle = '#1a1a2e';
-    pctx.fillRect(32, 45, 6, 12);
-    pctx.fillRect(42, 45, 6, 12);
+    pctx.fillRect(32, 55, 6, 12);
+    pctx.fillRect(42, 55, 6, 12);
 
     // Accessory
     pctx.fillStyle = '#333';
     switch (ACCESSORIES[player.accessory]) {
         case 'BONÉ':
-            pctx.fillRect(30, 5, 20, 6);
-            pctx.fillRect(25, 9, 12, 4);
+            pctx.fillRect(30, 15, 20, 6);
+            pctx.fillRect(25, 19, 12, 4);
+            break;
+        case 'CARTOLA':
+            pctx.fillRect(32, 2, 16, 16);
+            pctx.fillRect(28, 18, 24, 4);
+            break;
+        case 'PERUCA':
+            pctx.fillStyle = '#FF69B4';
+            pctx.beginPath();
+            pctx.arc(40, 22, 15, 0, Math.PI * 2);
+            pctx.fill();
+            break;
+        case 'ÓCULOS':
+            pctx.strokeStyle = '#000';
+            pctx.lineWidth = 2;
+            pctx.beginPath();
+            pctx.arc(35, 28, 4, 0, Math.PI * 2);
+            pctx.arc(45, 28, 4, 0, Math.PI * 2);
+            pctx.stroke();
+            pctx.beginPath();
+            pctx.moveTo(39, 28);
+            pctx.lineTo(41, 28);
+            pctx.stroke();
             break;
         case 'COROA':
             pctx.fillStyle = '#FFD700';
             pctx.beginPath();
-            pctx.moveTo(30, 10);
-            pctx.lineTo(33, 2);
-            pctx.lineTo(36, 8);
-            pctx.lineTo(40, 0);
-            pctx.lineTo(44, 8);
-            pctx.lineTo(47, 2);
-            pctx.lineTo(50, 10);
+            pctx.moveTo(30, 20);
+            pctx.lineTo(33, 12);
+            pctx.lineTo(36, 18);
+            pctx.lineTo(40, 10);
+            pctx.lineTo(44, 18);
+            pctx.lineTo(47, 12);
+            pctx.lineTo(50, 20);
             pctx.closePath();
             pctx.fill();
             break;

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -7,20 +8,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <canvas id="gameCanvas"></canvas>
-    
+
     <!-- Main Menu -->
     <div id="menuOverlay" class="menu-overlay">
         <h1 class="game-title">🍺 FESTA DA GALERA 🎉<br>Ultimate Beer Runner 2.0</h1>
-        
+
         <div class="tabs">
             <button class="tab-btn active" data-tab="play">JOGAR</button>
             <button class="tab-btn" data-tab="visual">VISUAL</button>
             <button class="tab-btn" data-tab="shop">LOJA</button>
             <button class="tab-btn" data-tab="stats">STATS</button>
         </div>
-        
+
         <div id="playTab" class="tab-content active">
             <div class="countdown" id="countdown"></div>
             <div class="stats-grid">
@@ -43,9 +45,12 @@
             </div>
             <button class="btn" id="startBtn">🎉 COMEÇAR A FESTA!</button>
             <button class="btn btn-secondary" id="tutorialBtn">📖 TUTORIAL</button>
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0bXMLZbsEKBpVuw0QlHtA4o5CSav_fFQByRv34g3oMIQEoQ/viewform" target="_blank" class="btn" id="subscribeBtn" style="background: linear-gradient(180deg, #228B22, #1a6b1a); border-color: #00FF00;">✅ CONFIRMAR PRESENÇA</a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0bXMLZbsEKBpVuw0QlHtA4o5CSav_fFQByRv34g3oMIQEoQ/viewform"
+                target="_blank" class="btn" id="subscribeBtn"
+                style="background: linear-gradient(180deg, #228B22, #1a6b1a); border-color: #00FF00;">✅ CONFIRMAR
+                PRESENÇA</a>
         </div>
-        
+
         <div id="visualTab" class="tab-content">
             <canvas id="previewCanvas" class="preview-canvas" width="80" height="80"></canvas>
             <div class="customizer">
@@ -75,12 +80,12 @@
                 </div>
             </div>
         </div>
-        
+
         <div id="shopTab" class="tab-content">
             <div class="coin-display">💰 <span id="shopCoins">0</span> MOEDAS</div>
             <div class="shop-grid" id="shopGrid"></div>
         </div>
-        
+
         <div id="statsTab" class="tab-content">
             <h3 style="color:#FFD700;font-size:12px;margin-bottom:10px;">🏆 TOP 5</h3>
             <div class="leaderboard" id="leaderboard"></div>
@@ -89,7 +94,7 @@
             <button class="btn btn-secondary" id="shareBtn" style="margin-top:15px;">📤 COMPARTILHAR RECORDE</button>
         </div>
     </div>
-    
+
     <!-- Game Over Modal -->
     <div id="gameOverModal" class="modal hidden">
         <div class="modal-content">
@@ -105,7 +110,7 @@
             <button class="btn btn-secondary" id="menuBtn">🏠 MENU</button>
         </div>
     </div>
-    
+
     <!-- Level Complete Modal -->
     <div id="levelCompleteModal" class="modal hidden">
         <div class="modal-content">
@@ -114,14 +119,17 @@
             <div class="party-info">
                 <div class="party-date">📅 13 DEZ | 12H | SÁBADO</div>
                 <div class="party-location">📍 Cond. Rio das Pedras - Imbuí</div>
-                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://docs.google.com/forms/d/e/1FAIpQLSf0bXMLZbsEKBpVuw0QlHtA4o5CSav_fFQByRv34g3oMIQEoQ/viewform" alt="QR Code">
+                <img class="qr-code"
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://docs.google.com/forms/d/e/1FAIpQLSf0bXMLZbsEKBpVuw0QlHtA4o5CSav_fFQByRv34g3oMIQEoQ/viewform"
+                    alt="QR Code">
             </div>
-            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0bXMLZbsEKBpVuw0QlHtA4o5CSav_fFQByRv34g3oMIQEoQ/viewform" target="_blank" class="btn">✅ CONFIRMAR PRESENÇA</a>
             <button class="btn" id="nextLevelBtn">➡️ PRÓXIMO NÍVEL</button>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSf0bXMLZbsEKBpVuw0QlHtA4o5CSav_fFQByRv34g3oMIQEoQ/viewform"
+                target="_blank" class="btn">✅ CONFIRMAR PRESENÇA</a>
             <button class="btn btn-secondary" id="levelMenuBtn">🏠 MENU</button>
         </div>
     </div>
-    
+
     <!-- Pause Modal -->
     <div id="pauseModal" class="modal hidden">
         <div class="modal-content">
@@ -131,7 +139,7 @@
             <button class="btn btn-secondary" id="pauseMenuBtn">🏠 MENU PRINCIPAL</button>
         </div>
     </div>
-    
+
     <!-- Tutorial -->
     <div id="tutorialOverlay" class="tutorial-overlay hidden">
         <div class="tutorial-content">
@@ -145,7 +153,7 @@
             <button class="btn" id="closeTutorialBtn" style="background:#8B0000;color:#FFD700;">BORA COMEÇAR!</button>
         </div>
     </div>
-    
+
     <!-- Achievement Popup (Non-blocking) -->
     <div id="achievementPopup" class="achievement-popup">
         <span class="ach-icon" id="achievementIcon">🏆</span>
@@ -155,4 +163,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
