@@ -34,6 +34,7 @@ let deltaTime = 0;
 let screenShake = 0;
 let gameSpeed = 5;
 let isPaused = false;
+let drunkLevel = 0;
 
 // ==================== PLAYER ====================
 const player = {
@@ -64,14 +65,14 @@ const CLOTHES = [
 ];
 const ACCESSORIES = ['NENHUM', 'BONÉ', 'PERUCA', 'CARTOLA', 'ÓCULOS', 'COROA'];
 const SKINS = [
-    { name: 'PADRÃO', price: 0, color: null },
-    { name: 'FESTEIRO', price: 50, color: '#FF1493' },
-    { name: 'VIP GOLD', price: 100, color: '#FFD700' },
-    { name: 'NEON', price: 150, color: '#00FFFF' },
-    { name: 'FLAMEJANTE', price: 200, color: '#FF4500' },
-    { name: 'GELO', price: 250, color: '#87CEEB' },
-    { name: 'ARCO-ÍRIS', price: 300, color: 'rainbow' },
-    { name: 'LENDÁRIO', price: 500, color: '#9370DB' }
+    { name: 'PADRÃO', price: 0, color: null, desc: 'Sem bônus' },
+    { name: 'FESTEIRO', price: 50, color: '#FF1493', desc: '+10% Duração Power-ups' },
+    { name: 'VIP GOLD', price: 100, color: '#FFD700', desc: 'Inicia com Escudo' },
+    { name: 'NEON', price: 150, color: '#00FFFF', desc: '2x Moedas, +10% Velocidade' },
+    { name: 'FLAMEJANTE', price: 200, color: '#FF4500', desc: 'Sem bônus' },
+    { name: 'GELO', price: 250, color: '#87CEEB', desc: 'Sem bônus' },
+    { name: 'ARCO-ÍRIS', price: 300, color: 'rainbow', desc: '2x Moedas, +10% Velocidade' },
+    { name: 'LENDÁRIO', price: 500, color: '#9370DB', desc: 'Sem bônus' }
 ];
 
 // ==================== ARRAYS ====================
@@ -88,6 +89,14 @@ let dancers = [];
 let toasts = [];
 
 // ==================== POWER-UPS STATE ====================
+let feverMode = {
+    active: false,
+    timer: 0,
+    itemCount: 0,
+    duration: 600,
+    comboTimer: 0
+};
+
 const activePowerups = {
     magnet: { active: false, timer: 0 },
     shield: { active: false, timer: 0 },
@@ -299,6 +308,11 @@ function handleInputStart(e) {
     initAudio();
 
     if (!inputDown && player.grounded) {
+        // Drunk input delay or inversion chance
+        if (drunkLevel > 50 && Math.random() < 0.3) {
+            return; // Input ignored due to drunkenness
+        }
+
         inputDown = true;
         inputStartTime = Date.now();
         player.jumpPressed = true;
@@ -389,6 +403,7 @@ function resetGame() {
     gameSpeed = 5;
     screenShake = 0;
     isPaused = false;
+    drunkLevel = 0;
 
     player.y = groundY - player.height;
     player.vy = 0;
@@ -411,8 +426,22 @@ function resetGame() {
     });
 
     usedPowerupTypes.clear();
+
+    // Reset Fever Mode
+    feverMode.active = false;
+    feverMode.timer = 0;
+    feverMode.itemCount = 0;
+    feverMode.comboTimer = 0;
+
     generateMission();
     initBackground();
+
+    // Skin Bonuses
+    if (player.skin === 'VIP GOLD') {
+        activePowerups.shield.active = true;
+        activePowerups.shield.timer = POWERUP_DURATION;
+        showToast('🛡️ ESCUDO VIP ATIVADO!', '#FFD700');
+    }
 }
 
 function initBackground() {
@@ -473,6 +502,20 @@ function completeMission() {
 }
 
 function spawnObstacle() {
+    // 20% chance to spawn a "Clumsy Waiter" instead of a text obstacle
+    if (Math.random() < 0.2) {
+        obstacles.push({
+            x: canvas.width + 50,
+            y: groundY - 50,
+            width: 30,
+            height: 50,
+            type: 'waiter',
+            speed: 2 + Math.random() * 2, // Moves faster than the ground
+            passed: false
+        });
+        return;
+    }
+
     const text = EXCUSES[Math.floor(Math.random() * EXCUSES.length)];
     ctx.font = '14px "Press Start 2P"';
     const width = Math.max(80, ctx.measureText(text).width + 20);
@@ -482,6 +525,7 @@ function spawnObstacle() {
         y: groundY - 40,
         width: width,
         height: 40,
+        type: 'text',
         text: text,
         passed: false
     });
@@ -530,7 +574,13 @@ function spawnPowerup() {
 
 function activatePowerup(type) {
     activePowerups[type].active = true;
-    activePowerups[type].timer = POWERUP_DURATION;
+
+    let duration = POWERUP_DURATION;
+    if (player.skin === 'FESTEIRO') {
+        duration *= 1.1; // +10% duration
+    }
+    activePowerups[type].timer = duration;
+
     usedPowerupTypes.add(type);
 
     if (usedPowerupTypes.size >= 5) {
@@ -543,6 +593,14 @@ function activatePowerup(type) {
 
     const info = POWERUP_TYPES.find(p => p.type === type);
     showToast(`${info.emoji} ${info.name} ATIVADO!`, info.color);
+}
+
+function activateFeverMode() {
+    feverMode.active = true;
+    feverMode.timer = feverMode.duration;
+    feverMode.itemCount = 0;
+    showToast('🔥 MODO PAGODE FRENÉTICO! 🔥', '#FF00FF');
+    screenShake = 30;
 }
 
 function updatePowerups() {
@@ -567,7 +625,16 @@ function getComboMultiplier() {
 }
 
 function collectItem(item) {
+    if (!feverMode.active && (item.type.name === 'Música' || item.type.name === 'Pagode')) {
+        feverMode.itemCount++;
+        feverMode.comboTimer = 180;
+        if (feverMode.itemCount >= 10) {
+            activateFeverMode();
+        }
+    }
+
     let points = 50;
+    if (feverMode.active) points *= 3;
     points *= getComboMultiplier();
     if (activePowerups.doublePoints.active) points *= 2;
 
@@ -577,6 +644,7 @@ function collectItem(item) {
         coins += 25;
         checkAchievement('goldHunter');
         screenShake = 12;
+        drunkLevel = Math.max(0, drunkLevel - 20); // Golden item sobers you up a bit
 
         for (let i = 0; i < 40; i++) {
             particles.push({
@@ -607,6 +675,14 @@ function collectItem(item) {
 
         playSound('item', 650 + score * 0.03, 0.12);
         vibrate(15);
+
+        // Drunk logic
+        const name = item.type.name;
+        if (['Cerveja', 'Chopp', 'Coquetel'].includes(name)) {
+            drunkLevel = Math.min(100, drunkLevel + 15);
+        } else if (['Água', 'Churrasco', 'Carne', 'Pizza', 'Hot Dog', 'Salgado', 'Sanduíche'].includes(name)) {
+            drunkLevel = Math.max(0, drunkLevel - 10);
+        }
     }
 
     score += Math.round(points);
@@ -632,8 +708,13 @@ function collectItem(item) {
 }
 
 function collectCoin() {
-    coins++;
-    totalCoins++;
+    let coinValue = 1;
+    if (player.skin === 'NEON' || player.skin === 'ARCO-ÍRIS') {
+        coinValue = 2; // 2x Coins
+    }
+
+    coins += coinValue;
+    totalCoins += coinValue;
 
     particles.push({
         x: player.x + player.width / 2,
@@ -684,6 +765,8 @@ function checkPerfectJump(obstacle) {
 }
 
 function hitObstacle() {
+    if (feverMode.active) return;
+
     if (activePowerups.shield.active) {
         activePowerups.shield.active = false;
         activePowerups.shield.timer = 0;
@@ -701,6 +784,7 @@ function gameOver() {
 
     // Remove all toasts immediately
     document.querySelectorAll('.toast').forEach(t => t.remove());
+    hideAchievementPopup();
 
     gamesPlayed++;
 
@@ -726,6 +810,7 @@ function gameOver() {
 }
 
 function completeLevel() {
+    hideAchievementPopup();
     gameState = 'levelcomplete';
     score += 500;
     levelsCompleted++;
@@ -780,7 +865,31 @@ function showToast(text, color) {
     toast.style.color = color === '#FFD700' || color === '#00FF00' || color === '#FFFF00' ? '#000' : '#FFF';
     document.body.appendChild(toast);
 
-    setTimeout(() => toast.remove(), 1500);
+    // Force reflow
+    void toast.offsetWidth;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 1500);
+
+    return toast;
+}
+
+function clearToasts() {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+}
+
+let achievementTimeout;
+
+function hideAchievementPopup() {
+    const popup = document.getElementById('achievementPopup');
+    popup.classList.remove('show');
+    if (achievementTimeout) {
+        clearTimeout(achievementTimeout);
+        achievementTimeout = null;
+    }
 }
 
 function checkAchievement(id) {
@@ -799,14 +908,14 @@ function checkAchievement(id) {
     document.getElementById('achievementIcon').textContent = ach.icon;
     document.getElementById('achievementName').textContent = ach.name;
 
-    // Remove and re-add class to restart animation
-    popup.classList.remove('show');
+    hideAchievementPopup();
+
     // Force reflow to restart animation
     void popup.offsetWidth;
     popup.classList.add('show');
 
     // Remove class after animation completes (3.5s)
-    setTimeout(() => {
+    achievementTimeout = setTimeout(() => {
         popup.classList.remove('show');
     }, 3500);
 }
@@ -829,7 +938,13 @@ function update(dt) {
     if (gameState !== 'playing') return;
 
     const speedMod = activePowerups.slowMo.active ? 0.6 : 1;
-    const adjustedSpeed = gameSpeed * speedMod;
+    let baseSpeed = gameSpeed;
+
+    if (player.skin === 'NEON' || player.skin === 'ARCO-ÍRIS') {
+        baseSpeed *= 1.1; // +10% Speed (Risk/Reward)
+    }
+
+    const adjustedSpeed = baseSpeed * speedMod;
 
     // Player physics
     if (player.jumpPressed && player.jumpHoldTime < MAX_HOLD_FRAMES && !player.grounded) {
@@ -867,11 +982,33 @@ function update(dt) {
     streak += dt * 0.016;
     if (streak >= 30) checkAchievement('streaker');
 
+    // Drunk decay
+    if (drunkLevel > 0) {
+        drunkLevel -= dt * 0.05;
+        if (drunkLevel < 0) drunkLevel = 0;
+    }
+
     // Combo timer
     if (comboTimer > 0) {
         comboTimer--;
         if (comboTimer <= 0) {
             combo = 0;
+        }
+    }
+
+    // Fever Mode Logic
+    if (feverMode.comboTimer > 0) {
+        feverMode.comboTimer--;
+        if (feverMode.comboTimer <= 0) feverMode.itemCount = 0;
+    }
+
+    if (feverMode.active) {
+        feverMode.timer--;
+        if (feverMode.timer <= 0) feverMode.active = false;
+
+        // Agitated sound effect
+        if (frameCount % 8 === 0) {
+            playSound('fever', 400 + Math.random() * 400, 0.1, 'sawtooth');
         }
     }
 
@@ -908,7 +1045,11 @@ function update(dt) {
 
     // Update obstacles
     obstacles.forEach((obs, i) => {
-        obs.x -= adjustedSpeed * dt;
+        let moveSpeed = adjustedSpeed;
+        if (obs.type === 'waiter') {
+            moveSpeed += obs.speed; // Waiter moves towards player faster
+        }
+        obs.x -= moveSpeed * dt;
 
         // Check perfect jump
         if (!obs.passed && obs.x + obs.width < player.x) {
@@ -936,7 +1077,7 @@ function update(dt) {
         const floatY = Math.sin(item.phase) * 5;
 
         // Magnet effect
-        if (activePowerups.magnet.active) {
+        if (activePowerups.magnet.active || feverMode.active) {
             const dx = player.x + player.width / 2 - item.x;
             const dy = player.y + player.height / 2 - item.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1003,26 +1144,11 @@ function update(dt) {
     });
     powerups = powerups.filter(p => p.x > -50);
 
-    // Update particles
-    particles.forEach(p => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.1;
-        p.life--;
-    });
-    particles = particles.filter(p => p.life > 0);
+    // Particles and Confetti updates moved to updateVisuals
 
-    // Update confetti
-    confetti.forEach(c => {
-        c.x += c.vx;
-        c.y += c.vy;
-        c.rotation += c.rotationSpeed;
-        c.life--;
-    });
-    confetti = confetti.filter(c => c.life > 0);
 
     // Update trails
-    if (Object.values(activePowerups).some(p => p.active)) {
+    if (Object.values(activePowerups).some(p => p.active) || feverMode.active) {
         trails.push({
             x: player.x + player.width / 2,
             y: player.y + player.height / 2,
@@ -1046,13 +1172,34 @@ function update(dt) {
         d.phase += 0.1;
     });
 
+    updateVisuals(dt);
+    frameCount++;
+}
+
+function updateVisuals(dt) {
+    // Update particles
+    particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.1;
+        p.life--;
+    });
+    particles = particles.filter(p => p.life > 0);
+
+    // Update confetti
+    confetti.forEach(c => {
+        c.x += c.vx;
+        c.y += c.vy;
+        c.rotation += c.rotationSpeed;
+        c.life--;
+    });
+    confetti = confetti.filter(c => c.life > 0);
+
     // Screen shake decay
     if (screenShake > 0) {
         screenShake *= 0.9;
         if (screenShake < 0.5) screenShake = 0;
     }
-
-    frameCount++;
 }
 
 // ==================== RENDER ====================
@@ -1067,18 +1214,35 @@ function render() {
         );
     }
 
+    // Drunk effect (Sway/Rotation)
+    if (drunkLevel > 0) {
+        const sway = Math.sin(frameCount * 0.05) * (drunkLevel / 100) * 0.1; // Rotation angle
+        const offsetX = Math.cos(frameCount * 0.03) * (drunkLevel / 2);
+
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(sway);
+        ctx.translate(-canvas.width / 2 + offsetX, -canvas.height / 2);
+    }
+
+    // Background
     // Background
     const isNight = level >= 5;
-    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    if (isNight) {
-        gradient.addColorStop(0, '#1a0033');
-        gradient.addColorStop(1, '#330066');
+    if (feverMode.active) {
+        const hue = (frameCount * 10) % 360;
+        ctx.fillStyle = `hsl(${hue}, 100%, 20%)`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else {
-        gradient.addColorStop(0, '#87CEEB');
-        gradient.addColorStop(1, '#E0F6FF');
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        if (isNight) {
+            gradient.addColorStop(0, '#1a0033');
+            gradient.addColorStop(1, '#330066');
+        } else {
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(1, '#E0F6FF');
+        }
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Night lights
     if (isNight && frameCount % 15 < 8) {
@@ -1175,6 +1339,7 @@ function render() {
         if (activePowerups.shield.active) color = '#00FFFF';
         if (activePowerups.slowMo.active) color = '#87CEEB';
         if (activePowerups.doublePoints.active) color = '#00FF00';
+        if (feverMode.active) color = `hsl(${(frameCount * 15) % 360}, 100%, 50%)`;
 
         ctx.globalAlpha = alpha * 0.5;
         ctx.fillStyle = color;
@@ -1189,19 +1354,41 @@ function render() {
         const distToPlayer = obs.x - player.x;
         const isClose = distToPlayer < 150 && distToPlayer > 0;
 
-        ctx.fillStyle = '#333';
-        ctx.strokeStyle = isClose ? '#FF0000' : '#666';
-        ctx.lineWidth = isClose ? 3 + Math.sin(frameCount * 0.3) * 2 : 2;
+        if (obs.type === 'waiter') {
+            // Draw Waiter
+            const bounce = Math.sin(frameCount * 0.2) * 3;
+            ctx.fillStyle = '#FFF'; // Shirt
+            ctx.fillRect(obs.x, obs.y + bounce, 30, 30);
+            ctx.fillStyle = '#000'; // Pants
+            ctx.fillRect(obs.x, obs.y + 30 + bounce, 30, 20);
+            ctx.fillStyle = '#FFDAB9'; // Head
+            ctx.beginPath();
+            ctx.arc(obs.x + 15, obs.y - 5 + bounce, 10, 0, Math.PI * 2);
+            ctx.fill();
+            // Tray
+            ctx.fillStyle = '#C0C0C0';
+            ctx.fillRect(obs.x - 10, obs.y + 10 + bounce, 20, 2);
+            // Drinks on tray
+            ctx.fillStyle = '#FF0000';
+            ctx.fillRect(obs.x - 8, obs.y + 2 + bounce, 4, 8);
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(obs.x, obs.y + 2 + bounce, 4, 8);
+        } else {
+            // Draw Text Obstacle
+            ctx.fillStyle = '#333';
+            ctx.strokeStyle = isClose ? '#FF0000' : '#666';
+            ctx.lineWidth = isClose ? 3 + Math.sin(frameCount * 0.3) * 2 : 2;
 
-        ctx.beginPath();
-        ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 5);
-        ctx.fill();
-        ctx.stroke();
+            ctx.beginPath();
+            ctx.roundRect(obs.x, obs.y, obs.width, obs.height, 5);
+            ctx.fill();
+            ctx.stroke();
 
-        ctx.fillStyle = '#FFF';
-        ctx.font = '10px "Press Start 2P"';
-        ctx.textAlign = 'center';
-        ctx.fillText(obs.text, obs.x + obs.width / 2, obs.y + 25);
+            ctx.fillStyle = '#FFF';
+            ctx.font = '10px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.fillText(obs.text, obs.x + obs.width / 2, obs.y + 25);
+        }
     });
 
     // Items
@@ -1441,6 +1628,13 @@ function render() {
         ctx.fillText(`COMBO x${getComboMultiplier()}`, canvas.width / 2, canvas.height / 2);
     }
 
+    if (drunkLevel > 60) {
+        ctx.fillStyle = `rgba(255, 105, 180, ${Math.abs(Math.sin(frameCount * 0.1))})`;
+        ctx.font = '20px "Press Start 2P"';
+        ctx.textAlign = 'center';
+        ctx.fillText('EITA...', canvas.width / 2, canvas.height / 2 - 40);
+    }
+
     ctx.shadowBlur = 0;
 
     // Power-up HUD
@@ -1534,9 +1728,12 @@ function gameLoop(currentTime) {
 
     if (gameState === 'playing' && !isPaused) {
         update(dt);
+    } else if (gameState === 'levelcomplete') {
+        updateVisuals(dt);
+        frameCount++;
     }
 
-    if (gameState === 'playing' || gameState === 'paused') {
+    if (gameState === 'playing' || gameState === 'paused' || gameState === 'levelcomplete') {
         render();
     }
 
@@ -1599,16 +1796,20 @@ function showToast(msg, color = '#FFD700') {
 }
 
 function updateMenuStats() {
-    document.getElementById('menuHighScore').textContent = highScore;
-    document.getElementById('menuCoins').textContent = `💰 ${totalCoins}`;
-    document.getElementById('menuGames').textContent = gamesPlayed;
-    document.getElementById('menuItems').textContent = totalItemsCollected;
-    document.getElementById('shopCoins').textContent = totalCoins;
+    try {
+        document.getElementById('menuHighScore').textContent = highScore;
+        document.getElementById('menuCoins').textContent = `💰 ${totalCoins}`;
+        document.getElementById('menuGames').textContent = gamesPlayed;
+        document.getElementById('menuItems').textContent = totalItemsCollected;
+        document.getElementById('shopCoins').textContent = totalCoins;
 
-    updateCountdown();
-    updateLeaderboard();
-    updateAchievementsList();
-    updateShop();
+        updateCountdown();
+        updateLeaderboard();
+        updateAchievementsList();
+        updateShop();
+    } catch (e) {
+        console.error('Error updating menu stats:', e);
+    }
 }
 
 function updateCountdown() {
@@ -1674,6 +1875,7 @@ function updateShop() {
                 <div class="skin-price">
                     ${unlocked ? (equipped ? '✅ EQUIPADA' : '👆 EQUIPAR') : `🔒 ${skin.price}💰`}
                 </div>
+                <div style="font-size:6px;color:#aaa;margin-top:2px;">${skin.desc}</div>
             </div>
         `;
     }).join('');
@@ -1719,7 +1921,7 @@ function updatePreview() {
     pctx.fillStyle = '#228B22';
     pctx.fillRect(0, 70, 80, 10);
 
-    const skinData = SKINS.find(s => s.name === player.skin);
+    const skinData = SKINS.find(s => s.name === player.skin) || SKINS[0];
     let bodyColor = CLOTHES[player.clothes].color;
     if (skinData && skinData.color && skinData.color !== 'rainbow') {
         bodyColor = skinData.color;
@@ -1799,17 +2001,86 @@ function updatePreview() {
     document.getElementById('accessoryValue').textContent = ACCESSORIES[player.accessory];
 }
 
-function shareHighScore() {
-    const text = `Meu recorde no Jogo da Festa da Galera é de ${highScore} pontos. Será que você consegue superar? Clica aqui:`;
-    const url = window.location.href;
+function generateTicket() {
+    try {
+        console.log('Starting generateTicket function...');
+        const tCanvas = document.createElement('canvas');
+        tCanvas.width = 600;
+        tCanvas.height = 300;
+        const tCtx = tCanvas.getContext('2d');
 
-    if (navigator.share) {
-        navigator.share({ title: 'Festa da Galera', text, url });
-    } else {
-        navigator.clipboard.writeText(`${text} ${url}`).then(() => {
-            showToast('Link copiado!', '#00FF00');
-        });
+        // Background Gradient (Wine to Dark)
+        const grad = tCtx.createLinearGradient(0, 0, 600, 300);
+        grad.addColorStop(0, '#8B0000');
+        grad.addColorStop(1, '#2c0000');
+        tCtx.fillStyle = grad;
+        tCtx.fillRect(0, 0, 600, 300);
+
+        // Border (Gold)
+        tCtx.strokeStyle = '#FFD700';
+        tCtx.lineWidth = 10;
+        tCtx.strokeRect(5, 5, 590, 290);
+
+        // Decorative Circles (Confetti style)
+        for (let i = 0; i < 20; i++) {
+            tCtx.fillStyle = Math.random() > 0.5 ? '#FFD700' : '#FFFFFF';
+            tCtx.globalAlpha = 0.2;
+            tCtx.beginPath();
+            tCtx.arc(Math.random() * 600, Math.random() * 300, Math.random() * 20 + 5, 0, Math.PI * 2);
+            tCtx.fill();
+        }
+        tCtx.globalAlpha = 1;
+
+        // Title
+        tCtx.fillStyle = '#FFD700';
+        tCtx.font = 'bold 30px "Courier New"';
+        tCtx.textAlign = 'center';
+        tCtx.fillText('🎫 INGRESSO VIP 🎫', 300, 50);
+
+        // Player Name
+        const playerName = localStorage.getItem('beerRunnerLastPlayerName') || 'CONVIDADO VIP';
+        tCtx.fillStyle = '#FFFFFF';
+        tCtx.font = 'bold 40px "Arial"';
+        tCtx.fillText(playerName.toUpperCase(), 300, 110);
+
+        // High Score
+        tCtx.fillStyle = '#FFD700';
+        tCtx.font = '25px "Arial"';
+        tCtx.fillText(`RECORDE: ${highScore} PONTOS`, 300, 150);
+
+        // Event Info
+        tCtx.fillStyle = '#CCCCCC';
+        tCtx.font = '18px "Arial"';
+        tCtx.fillText('📅 13 DEZ | 12H | SÁBADO', 300, 200);
+        tCtx.fillText('📍 Cond. Rio das Pedras - Imbuí', 300, 225);
+
+        // Challenge Text
+        tCtx.fillStyle = '#00FF00';
+        tCtx.font = 'italic bold 20px "Arial"';
+        tCtx.fillText('"Eu vou! Você consegue me superar?"', 300, 270);
+
+        // Show in Modal
+        const dataUrl = tCanvas.toDataURL('image/png');
+        const img = document.getElementById('ticketImage');
+        if (img) {
+            console.log('Setting image source...');
+            img.src = dataUrl;
+            console.log('Showing modal...');
+            const modal = document.getElementById('ticketModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex'; // Force display
+            console.log('Modal class list:', modal.classList);
+        } else {
+            console.error('Ticket image element not found!');
+        }
+    } catch (e) {
+        console.error('Error generating ticket:', e);
+        showToast('Erro ao gerar ingresso!', '#FF0000');
     }
+}
+
+function closeTicketModal() {
+    document.getElementById('ticketModal').classList.add('hidden');
 }
 
 // ==================== EVENT LISTENERS ====================
@@ -1893,12 +2164,14 @@ document.getElementById('closeTutorialBtn').addEventListener('touchend', (e) => 
 // Game over buttons
 document.getElementById('retryBtn').addEventListener('click', (e) => {
     e.preventDefault();
+    clearToasts();
     hideGameOverModal();
     gameState = 'playing';
     resetGame();
 });
 document.getElementById('retryBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
+    clearToasts();
     hideGameOverModal();
     gameState = 'playing';
     resetGame();
@@ -1906,6 +2179,7 @@ document.getElementById('retryBtn').addEventListener('touchend', (e) => {
 
 document.getElementById('menuBtn').addEventListener('click', (e) => {
     e.preventDefault();
+    clearToasts();
     hideGameOverModal();
     gameState = 'menu';
     document.getElementById('menuOverlay').classList.remove('hidden');
@@ -1913,6 +2187,7 @@ document.getElementById('menuBtn').addEventListener('click', (e) => {
 });
 document.getElementById('menuBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
+    clearToasts();
     hideGameOverModal();
     gameState = 'menu';
     document.getElementById('menuOverlay').classList.remove('hidden');
@@ -1922,32 +2197,37 @@ document.getElementById('menuBtn').addEventListener('touchend', (e) => {
 document.getElementById('saveScoreBtn').addEventListener('click', (e) => {
     e.preventDefault();
     const name = document.getElementById('nameInput').value.trim() || 'ANÔNIMO';
+    localStorage.setItem('beerRunnerLastPlayerName', name);
     saveTopScore(name, score);
     document.getElementById('nameInput').classList.add('hidden');
     document.getElementById('saveScoreBtn').classList.add('hidden');
-    showToast('Score salvo!', '#00FF00');
+    showToast('Score salvo com sucesso!', '#00FF00');
 });
 document.getElementById('saveScoreBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
     const name = document.getElementById('nameInput').value.trim() || 'ANÔNIMO';
+    localStorage.setItem('beerRunnerLastPlayerName', name);
     saveTopScore(name, score);
     document.getElementById('nameInput').classList.add('hidden');
     document.getElementById('saveScoreBtn').classList.add('hidden');
-    showToast('Score salvo!', '#00FF00');
+    showToast('Score salvo com sucesso!', '#00FF00');
 });
 
 // Level complete buttons
 document.getElementById('nextLevelBtn').addEventListener('click', (e) => {
     e.preventDefault();
+    clearToasts();
     nextLevel();
 });
 document.getElementById('nextLevelBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
+    clearToasts();
     nextLevel();
 });
 
 document.getElementById('levelMenuBtn').addEventListener('click', (e) => {
     e.preventDefault();
+    clearToasts();
     hideLevelCompleteModal();
     gameState = 'menu';
     document.getElementById('menuOverlay').classList.remove('hidden');
@@ -1955,6 +2235,7 @@ document.getElementById('levelMenuBtn').addEventListener('click', (e) => {
 });
 document.getElementById('levelMenuBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
+    clearToasts();
     hideLevelCompleteModal();
     gameState = 'menu';
     document.getElementById('menuOverlay').classList.remove('hidden');
@@ -1988,15 +2269,66 @@ document.getElementById('pauseMenuBtn').addEventListener('touchend', (e) => {
     updateMenuStats();
 });
 
-// Share button
-document.getElementById('shareBtn').addEventListener('click', (e) => {
+// Generate Ticket button
+document.getElementById('generateTicketBtn').addEventListener('click', (e) => {
     e.preventDefault();
-    shareHighScore();
+    console.log('Generate Ticket Clicked');
+    generateTicket();
 });
-document.getElementById('shareBtn').addEventListener('touchend', (e) => {
+document.getElementById('generateTicketBtn').addEventListener('touchend', (e) => {
     e.preventDefault();
-    shareHighScore();
+    console.log('Generate Ticket Touched');
+    generateTicket();
 });
+
+// Close Ticket button
+document.getElementById('closeTicketBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    closeTicketModal();
+});
+document.getElementById('closeTicketBtn').addEventListener('touchend', (e) => {
+    e.preventDefault();
+    closeTicketModal();
+});
+
+// Download/Share Ticket button
+document.getElementById('downloadTicketBtn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const img = document.getElementById('ticketImage');
+    const dataUrl = img.src;
+
+    // Try Web Share API first
+    if (navigator.share) {
+        try {
+            const blob = await (await fetch(dataUrl)).blob();
+            const file = new File([blob], 'ingresso-vip.png', { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'Ingresso VIP - Festa da Galera',
+                    text: 'Eu vou! Você consegue me superar?'
+                });
+                return;
+            }
+        } catch (err) {
+            console.log('Share failed, falling back to download', err);
+        }
+    }
+
+    // Fallback to download
+    const link = document.createElement('a');
+    link.download = 'ingresso-vip-festa-galera.png';
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+});
+
+function closeTicketModal() {
+    const modal = document.getElementById('ticketModal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+}
 
 // ==================== INITIALIZATION ====================
 loadData();

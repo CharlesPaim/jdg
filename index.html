@@ -91,7 +91,9 @@
             <div class="leaderboard" id="leaderboard"></div>
             <h3 style="color:#FFD700;font-size:12px;margin:15px 0 10px;">🎖️ CONQUISTAS</h3>
             <div class="achievements-list" id="achievementsList"></div>
-            <button class="btn btn-secondary" id="shareBtn" style="margin-top:15px;">📤 COMPARTILHAR RECORDE</button>
+            <button class="btn btn-secondary" id="generateTicketBtn"
+                style="margin-top:15px; background: linear-gradient(180deg, #FFD700, #DAA520); color: #000; border-color: #fff;">🎫
+                GERAR INGRESSO VIP</button>
         </div>
     </div>
 
@@ -134,23 +136,35 @@
     <div id="pauseModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-title">⏸️ PAUSADO</div>
-            <p style="color:#87CEEB;font-size:10px;margin:15px 0;">Aproveite para tomar um gole d'água! 💧</p>
+            <p style="color:#87CEEB;font-size:10px;margin:15px 0;">Aproveite para tomar um gole d'água! 💧
+            </p>
             <button class="btn" id="continueBtn">▶️ CONTINUAR</button>
             <button class="btn btn-secondary" id="pauseMenuBtn">🏠 MENU PRINCIPAL</button>
-        </div>
-    </div>
-
-    <!-- Tutorial -->
-    <div id="tutorialOverlay" class="tutorial-overlay hidden">
-        <div class="tutorial-content">
             <h2 style="color:#8B0000;font-size:14px;margin-bottom:20px;">📖 COMO JOGAR</h2>
             <div class="tutorial-step"><span class="tutorial-icon">👆</span>Toque ou clique para PULAR</div>
-            <div class="tutorial-step"><span class="tutorial-icon">🖐️</span>SEGURE para pulos mais altos</div>
+            <div class="tutorial-step"><span class="tutorial-icon">🖐️</span>SEGURE para pulos mais altos
+            </div>
             <div class="tutorial-step"><span class="tutorial-icon">🍺</span>Colete bebidas e comidas</div>
             <div class="tutorial-step"><span class="tutorial-icon">⚠️</span>Desvie das DESCULPAS</div>
             <div class="tutorial-step"><span class="tutorial-icon">⭐</span>Pegue POWER-UPS</div>
             <div class="tutorial-step"><span class="tutorial-icon">🎯</span>Complete MISSÕES</div>
-            <button class="btn" id="closeTutorialBtn" style="background:#8B0000;color:#FFD700;">BORA COMEÇAR!</button>
+            <button class="btn" id="closeTutorialBtn" style="background:#8B0000;color:#FFD700;">BORA
+                COMEÇAR!</button>
+        </div>
+    </div>
+
+    <!-- Ticket Modal -->
+    <div id="ticketModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 350px;">
+            <div class="modal-title">🎫 SEU INGRESSO VIP</div>
+            <p style="color:#aaa;font-size:10px;margin-bottom:15px;">Salve seu ingresso e mostre pra galera!</p>
+            <img id="ticketImage"
+                style="width:100%; border-radius:10px; border:2px solid #FFD700; box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);"
+                alt="Ingresso VIP">
+            <button class="btn" id="downloadTicketBtn"
+                style="margin-top:15px; background: #228B22; border-color: #00FF00; color: #fff;">📥 SALVAR /
+                COMPARTILHAR</button>
+            <button class="btn btn-secondary" id="closeTicketBtn" style="margin-top:10px;">FECHAR</button>
         </div>
     </div>
 
